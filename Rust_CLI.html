@@ -1,0 +1,234 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rust CLI Tool Documentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0 2rem;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 1rem;
+            border-left: 5px solid #ccc;
+            overflow-x: auto;
+        }
+        code {
+            color: #d6336c;
+        }
+        a {
+            color: #007acc;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        ul {
+            padding-left: 1.5rem;
+        }
+        .note {
+            background: #e7f3fe;
+            border-left: 5px solid #2196F3;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Creating and Publishing Rust Command Line Tools</h1>
+    <p>This guide takes you through the steps of creating, customizing, and publishing a Rust CLI tool. By the end, you will have a fully functional tool ready for distribution.</p>
+
+    <h2>Step 1: Create a New Rust Project</h2>
+    <pre><code>cargo new my_cli_tool</code></pre>
+    <p>Navigate into the project folder:</p>
+    <pre><code>cd my_cli_tool</code></pre>
+
+    <h2>Step 2: Parse Command-Line Arguments</h2>
+    <p>Start by parsing arguments using <code>std::env::args</code>:</p>
+    <pre><code>fn main() {
+    let pattern = std::env::args().nth(1).expect("no pattern given");
+    let path = std::env::args().nth(2).expect("no path given");
+
+    println!("pattern: {:?}, path: {:?}", pattern, path);
+}</code></pre>
+
+    <h2>Step 3: Refactor with Custom Data Types</h2>
+    <p>Encapsulate arguments into a struct:</p>
+    <pre><code>use std::path::PathBuf;
+
+struct Cli {
+    pattern: String,
+    path: PathBuf,
+}
+
+fn main() {
+    let pattern = std::env::args().nth(1).expect("no pattern given");
+    let path = std::env::args().nth(2).expect("no path given");
+
+    let args = Cli {
+        pattern,
+        path: PathBuf::from(path),
+    };
+
+    println!("pattern: {:?}, path: {:?}", args.pattern, args.path);
+}</code></pre>
+
+    <h2>Step 4: Use the <code>clap</code> Library</h2>
+    <p>Integrate <code>clap</code> for better argument parsing and help messages:</p>
+    <pre><code>use clap::Parser;
+
+/// Search for a pattern in a file and display the lines that contain it.
+#[derive(Parser)]
+struct Cli {
+    /// The pattern to look for
+    pattern: String,
+    /// The path to the file to read
+    path: std::path::PathBuf,
+}
+
+fn main() {
+    let args = Cli::parse();
+
+    println!("pattern: {:?}, path: {:?}", args.pattern, args.path);
+}</code></pre>
+    <p>Learn more about <code>clap</code> <a href="https://docs.rs/clap/latest/clap/" target="_blank">here</a>.</p>
+
+    <h2>Step 5: Implement Core Functionality</h2>
+    <p>Read file content and search for the pattern:</p>
+    <pre><code>use clap::Parser;
+
+/// Search for a pattern in a file and display the lines that contain it.
+#[derive(Parser)]
+struct Cli {
+    /// The pattern to look for
+    pattern: String,
+    /// The path to the file to read
+    path: std::path::PathBuf,
+}
+
+fn main() {
+    let args = Cli::parse();
+    let content = std::fs::read_to_string(&args.path).expect("could not read file");
+
+    for line in content.lines() {
+        if line.contains(&args.pattern) {
+            println!("{}", line);
+        }
+    }
+}</code></pre>
+
+    <h2>Step 6: Add Error Handling with <code>anyhow</code></h2>
+    <p>Enhance error messages using the <code>anyhow</code> crate:</p>
+    <pre><code>use anyhow::{Context, Result};
+use clap::Parser;
+
+/// Search for a pattern in a file and display the lines that contain it.
+#[derive(Parser)]
+struct Cli {
+    /// The pattern to look for
+    pattern: String,
+    /// The path to the file to read
+    path: std::path::PathBuf,
+}
+
+fn main() -> Result<()> {
+    let args = Cli::parse();
+
+    let content = std::fs::read_to_string(&args.path)
+        .with_context(|| format!("could not read file `{}`", args.path.display()))?;
+
+    for line in content.lines() {
+        if line.contains(&args.pattern) {
+            println!("{}", line);
+        }
+    }
+
+    Ok(())
+}</code></pre>
+
+    <h2>Step 7: Add a Progress Bar</h2>
+    <p>Use the <code>indicatif</code> crate for a progress bar:</p>
+    <pre><code>use indicatif::ProgressBar;
+
+// Example usage:
+let bar = ProgressBar::new(100);
+for _ in 0..100 {
+    bar.inc(1);
+}
+bar.finish();</code></pre>
+
+    <h2>Step 8: Add Logging</h2>
+    <p>Integrate logging with the <code>log</code> crate:</p>
+    <pre><code>use log::{info, warn};
+
+fn main() {
+    env_logger::init();
+
+    info!("Application started");
+    warn!("This is a warning message");
+}</code></pre>
+
+    <h2>Step 9: Write Tests</h2>
+    <p>Use Rust's built-in testing framework:</p>
+    <pre><code>#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pattern_matching() {
+        let content = "hello world\nhello rust";
+        assert!(content.contains("rust"));
+    }
+}</code></pre>
+
+    <h2>Step 10: Prepare for Publishing</h2>
+    <h3>Directory Structure</h3>
+    <p>Before publishing, ensure your project structure looks like this:</p>
+    <pre><code>my_cli_tool/
+├── Cargo.toml
+├── src/
+│   └── main.rs
+└── target/</code></pre>
+
+    <h3>Configure <code>Cargo.toml</code></h3>
+    <p>Make sure your <code>Cargo.toml</code> contains the necessary metadata:</p>
+    <pre><code>[package]
+name = "my_cli_tool"
+version = "0.1.0"
+authors = ["Your Name <your.email@example.com>"]
+edition = "2021"
+description = "A simple CLI tool for searching patterns in files"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/my_cli_tool"
+keywords = ["cli", "tool", "rust"]
+categories = ["command-line-utilities"]
+</code></pre>
+
+    <h3>Register for a Crates.io Token</h3>
+    <p>To publish your package, you need a Crates.io token:</p>
+    <ol>
+        <li>Visit <a href="https://crates.io/" target="_blank">Crates.io</a> and log in.</li>
+        <li>Go to your account settings and generate a new token.</li>
+        <li>Save the token securely and run:</li>
+    </ol>
+    <pre><code>cargo login</code></pre>
+
+    <h2>Step 11: Publish Your Tool</h2>
+    <p>When ready, publish your tool:</p>
+    <pre><code>cargo publish</code></pre>
+    <p>For more details, refer to the <a href="https://doc.rust-lang.org/1.39.0/cargo/reference/publishing.html" target="_blank">Cargo publishing guide</a>.</p>
+
+    <h2>Additional Resources</h2>
+    <p>Check out the official <a href="https://rust-cli.github.io/book/index.html" target="_blank">Rust CLI Book</a> for in-depth knowledge and best practices.</p>
+
+    <p class="note">Congratulations! Your Rust CLI tool is ready and published.</p>
+</body>
+</html>
